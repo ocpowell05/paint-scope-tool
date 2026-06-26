@@ -38,7 +38,8 @@ async def analyze(file: UploadFile = File(...)):
         result = analyze_spec_pdf(pdf_bytes, max_pages=int(os.environ.get("MAX_PAGES", "60")))
         return JSONResponse(result)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(500, f"Processing failed: {e}")
-
 # Serve the frontend (index.html) at the root
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
