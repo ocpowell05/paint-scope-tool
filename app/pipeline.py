@@ -20,7 +20,7 @@ KEYWORDS = [
 
 def _client():
     # Created lazily so the app can boot (and health-check) even if key is missing.
-    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"].strip())
 
 def extract_pages(pdf_bytes):
     reader = PdfReader(io.BytesIO(pdf_bytes))
