@@ -8,7 +8,7 @@ from pypdf import PdfReader
 import anthropic
 
 # Model string lives in one place so it's easy to update.
-MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
 
 # Universal paint-scope vocabulary (not job-specific). Drives the cheap prefilter.
 KEYWORDS = [
@@ -20,7 +20,7 @@ KEYWORDS = [
 
 def _client():
     # Created lazily so the app can boot (and health-check) even if key is missing.
-    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"].strip())
+    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
 def extract_pages(pdf_bytes):
     reader = PdfReader(io.BytesIO(pdf_bytes))
