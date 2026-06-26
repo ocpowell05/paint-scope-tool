@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.pipeline import analyze_spec_pdf
+from app.drawings import analyze_drawings
 
 app = FastAPI(title="Paint Scope Tool")
 
@@ -41,5 +42,30 @@ async def analyze(file: UploadFile = File(...)):
         import traceback
         traceback.print_exc()
         raise HTTPException(500, f"Processing failed: {e}")
+
+@app.post("/api/analyze-drawings")
+async def analyze_drawings_endpoint(
+    file: UploadFile = File(...),
+    only_pages: str = "",   # comma-separated 0-based page indices for test mode, e.g. "23,30,24"
+):
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "Please upload a PDF.")
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise HTTPException(500, "Server missing ANTHROPIC_API_KEY.")
+    pdf_bytes = await file.read()
+    pages = None
+    if only_pages.strip():
+        try:
+            pages = [int(x) for x in only_pages.split(",") if x.strip() != ""]
+        except ValueError:
+            raise HTTPException(400, "only_pages must be comma-separated numbers, e.g. 23,30")
+    try:
+        result = analyze_drawings(pdf_bytes, only_pages=pages)
+        return JSONResponse(result)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(500, f"Drawings processing failed: {e}")
+
 # Serve the frontend (index.html) at the root
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
