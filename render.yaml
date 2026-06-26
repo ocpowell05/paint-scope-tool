@@ -1,0 +1,17 @@
+# Render deployment config.
+# After pushing to GitHub: render.com -> New -> Blueprint -> pick this repo.
+# Then set ANTHROPIC_API_KEY in the dashboard (Environment tab) — never in code.
+services:
+  - type: web
+    name: paint-scope-tool
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false        # you set this secret in the dashboard, not in the repo
+      - key: MAX_PAGES
+        value: "60"
+      - key: CLAUDE_MODEL
+        value: "claude-sonnet-4-5-20250929"

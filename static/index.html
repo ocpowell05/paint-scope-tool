@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paint Scope Tool</title>
+<style>
+  :root { --ink:#1a1a1a; --muted:#666; --line:#e2e2e2; --accent:#c2410c; --bg:#faf9f7; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         margin:0; background:var(--bg); color:var(--ink); line-height:1.5; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 32px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:28px; }
+  .drop { border:2px dashed var(--line); border-radius:10px; padding:40px; text-align:center;
+          cursor:pointer; transition:.15s; }
+  .drop:hover { border-color:var(--accent); background:#fff7f3; }
+  .drop input { display:none; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px;
+           padding:12px 22px; font-size:.95rem; cursor:pointer; margin-top:18px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .status { margin-top:18px; color:var(--muted); font-size:.9rem; }
+  table { width:100%; border-collapse:collapse; margin-top:24px; font-size:.85rem; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { background:#f5f3f0; font-weight:600; }
+  .tag { font-size:.72rem; padding:2px 7px; border-radius:20px; }
+  .Include{background:#dcfce7;color:#166534;} .Exclude{background:#fee2e2;color:#991b1b;}
+  .Clarify{background:#fef3c7;color:#92400e;}
+  .meta { font-size:.8rem; color:var(--muted); margin-top:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Paint Scope Tool</h1>
+  <p class="sub">Upload a spec PDF to extract paint scope. (Skeleton — specs path.)</p>
+  <div class="card">
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept="application/pdf">
+      <div id="dropText">Click to choose a PDF, or drop one here</div>
+    </label>
+    <button id="go" disabled>Analyze</button>
+    <div class="status" id="status"></div>
+    <div id="results"></div>
+  </div>
+</div>
+<script>
+const fileInput = document.getElementById('file');
+const drop = document.getElementById('drop');
+const dropText = document.getElementById('dropText');
+const go = document.getElementById('go');
+const status = document.getElementById('status');
+const results = document.getElementById('results');
+let chosen = null;
+
+fileInput.addEventListener('change', e => {
+  chosen = e.target.files[0];
+  if (chosen) { dropText.textContent = chosen.name; go.disabled = false; }
+});
+drop.addEventListener('dragover', e => { e.preventDefault(); });
+drop.addEventListener('drop', e => {
+  e.preventDefault();
+  chosen = e.dataTransfer.files[0];
+  if (chosen) { dropText.textContent = chosen.name; go.disabled = false; }
+});
+
+go.addEventListener('click', async () => {
+  if (!chosen) return;
+  go.disabled = true; results.innerHTML = '';
+  status.textContent = 'Uploading and analyzing… (large docs take a bit)';
+  const fd = new FormData();
+  fd.append('file', chosen);
+  try {
+    const r = await fetch('/api/analyze', { method:'POST', body: fd });
+    if (!r.ok) { const err = await r.json(); throw new Error(err.detail || r.status); }
+    const data = await r.json();
+    render(data);
+    status.textContent = '';
+  } catch (err) {
+    status.textContent = 'Error: ' + err.message;
+  }
+  go.disabled = false;
+});
+
+function render(data) {
+  let html = `<div class="meta">Pages: ${data.total_pages} · Paint-relevant: ${data.relevant_pages} · Items: ${data.item_count||0}</div>`;
+  if (data.items && data.items.length) {
+    html += '<table><tr><th>Item</th><th>Finish</th><th>Type</th><th>Disposition</th><th>Conf</th><th>Pg</th></tr>';
+    for (const it of data.items) {
+      html += `<tr><td>${esc(it.item)}</td><td>${esc(it.finish_required)}</td>
+        <td>${esc(it.finish_type)}</td>
+        <td><span class="tag ${esc(it.disposition)}">${esc(it.disposition)}</span></td>
+        <td>${esc(it.confidence)}</td><td>${esc(it.source_page)}</td></tr>`;
+    }
+    html += '</table>';
+  }
+  if (data.note) html += `<div class="meta">${esc(data.note)}</div>`;
+  results.innerHTML = html;
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+# NEVER commit your API key. .env stays local.
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Local test files
+uploads/
+*.local.pdf
