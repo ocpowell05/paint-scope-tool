@@ -124,17 +124,35 @@ CLASSIFY_PROMPT = """Look at this construction drawing sheet. Reply ONLY with JS
 No markdown, no preamble."""
 
 # ---- read the finish legend ----
-LEGEND_PROMPT = """This sheet has a finish legend/key. Extract every finish code and meaning.
+LEGEND_PROMPT = """This sheet has a finish legend/key defining finish codes. Extract every code.
 Return ONLY a JSON array:
 [{"code":"PNT-1","category":"paint|floor|base|wall|ceiling|wallcovering|other",
   "description":"","product":"","sheen":""}]
+
+IMPORTANT:
+- Each code is a SEPARATE entry. Read each code's description block on its own — do NOT
+  let text (manufacturer, product name, grout, sealer) from one code bleed into another.
+  Codes are usually in distinct boxes or rows; keep their products strictly separate.
+- "product" = only the manufacturer/product/color that belongs to THAT code.
+- If a field isn't shown for a code, leave it "". Do not copy a neighbor's value.
 No markdown."""
 
 # ---- read per-room finishes (table OR plan tags) ----
 ROOMS_PROMPT = """This sheet shows room finishes (a schedule table OR per-room finish tags on a plan).
-For EVERY room, extract its finishes. Return ONLY a JSON array:
-[{"room_number":"101","room_name":"Lobby","floor":"","base":"","walls":"","ceiling":"","source":""}]
-Use exact codes shown; blank field -> "". No markdown."""
+For EVERY room, extract its finishes carefully. Return ONLY a JSON array:
+[{"room_number":"101","room_name":"Lobby","floor":"","base":"","walls":"","ceiling":"","wall_notes":"","source":""}]
+
+IMPORTANT reading rules:
+- WALLS: capture EVERY wall finish listed for the room, separated by commas. If a room
+  has an accent wall (e.g. a second paint code like PNT-2, or a note "accent wall"),
+  you MUST include it — do not report only the primary wall finish. Look for multiple
+  codes, callout bubbles, or accent notes pointing at specific walls.
+- PARTIAL HEIGHT: if walls have tile (e.g. T-2, T-3) AND paint, this usually means tile
+  to a height then paint above. Put all codes in "walls" and note it in "wall_notes"
+  (e.g. "tile wainscot with paint above — partial height").
+- Use the EXACT codes shown. Blank field -> "". Do not invent finishes not shown.
+- If a finish is ambiguous or you are unsure, still report it but say so in wall_notes.
+No markdown."""
 
 # ---- read door schedule ----
 DOORS_PROMPT = """This sheet has a door schedule. Extract every door row plus any general
