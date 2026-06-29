@@ -24,7 +24,7 @@ def _client():
     raw = os.environ["ANTHROPIC_API_KEY"]
     return anthropic.Anthropic(api_key="".join(raw.split()))  # strip stray whitespace
 
-def _render(doc, idx, scale=3.0):
+def _render(doc, idx, scale=2.0):
     pix = doc[idx].get_pixmap(matrix=fitz.Matrix(scale, scale))
     return pix.tobytes("png")
 
@@ -95,7 +95,7 @@ RCP_PROMPT = """This is a reflected ceiling plan. For each room where a ceiling 
 [{"room_number":"101","room_name":"","ceiling_height":"","other_heights":"","ceiling_type":""}]
 Only rooms whose height you can actually read. No markdown."""
 
-def analyze_drawings(pdf_bytes, only_pages=None, scale=3.0):
+def analyze_drawings(pdf_bytes, only_pages=None, scale=2.0):
     """
     only_pages: list of 0-based page indices to process. If None, shortlist by
     keywords (still cheap). Use a short list while testing for fast loops.
