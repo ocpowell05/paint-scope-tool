@@ -158,21 +158,30 @@ def assemble_schedule(drawings_result):
     for room in drawings_result.get("rooms", []):
         rn = (room.get("room_number") or "").strip()
         h = heights.get(rn, {})
+        walls_resolved = _resolve_cell(room.get("walls", ""), legend_map)
+        # detect partial-height (tile + paint on same wall) for takeoff accuracy
+        wall_codes = [w["code"] for w in walls_resolved]
+        has_tile = any(c.startswith("T-") for c in wall_codes)
+        has_paint = any(w["scope"] in ("paint", "stain") for w in walls_resolved)
+        partial_height = has_tile and has_paint
         row = {
             "room_number": rn,
             "room_name": room.get("room_name", ""),
             "floor": _resolve_cell(room.get("floor", ""), legend_map),
             "base": _resolve_cell(room.get("base", ""), legend_map),
-            "walls": _resolve_cell(room.get("walls", ""), legend_map),
+            "walls": walls_resolved,
             "ceiling": _resolve_cell(room.get("ceiling", ""), legend_map),
             "ceiling_height": h.get("ceiling_height") or "VERIFY — not on RCP",
             "ceiling_type": h.get("ceiling_type", ""),
             "height_notes": h.get("other_heights", ""),
+            "wall_notes": room.get("wall_notes", ""),
+            "partial_height_walls": partial_height,
         }
         schedule.append(row)
 
     # painter scope summary: which rooms have paintable walls/base, accent walls, etc.
     paint_walls, accent_walls, paint_base, sealed_concrete, verify_items = [], [], [], [], []
+    partial_height_rooms = []
     for row in schedule:
         rn = row["room_number"]
         for w in row["walls"]:
@@ -180,6 +189,9 @@ def assemble_schedule(drawings_result):
                 paint_walls.append(rn)
             if "PNT-2" in w["code"]:
                 accent_walls.append(rn)
+        if row.get("partial_height_walls"):
+            partial_height_rooms.append(rn)
+            verify_items.append(f"Room {rn}: tile + paint walls — confirm paint height (where tile stops)")
         for b in row["base"]:
             if b["scope"] in ("paint", "stain"):
                 paint_base.append(f"{rn} ({b['code']})")
@@ -203,6 +215,7 @@ def assemble_schedule(drawings_result):
         "accent_wall_rooms": sorted(set(accent_walls)),
         "paint_or_stain_base": sorted(set(paint_base)),
         "sealed_concrete_floors": sorted(set(sealed_concrete)),
+        "partial_height_paint_rooms": sorted(set(partial_height_rooms)),
         "hm_frames_to_paint_PNT3": [x for x in hm_frames_to_paint if x],
         "door_finish_notes": drawings_result.get("doors", {}).get("finish_notes", []),
         "verify_flags": verify_items,
