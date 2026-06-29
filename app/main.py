@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.pipeline import analyze_spec_pdf
 from app.drawings import analyze_drawings
+from app.assemble import assemble_schedule
 
 app = FastAPI(title="Paint Scope Tool")
 
@@ -66,6 +67,38 @@ async def analyze_drawings_endpoint(
         import traceback
         traceback.print_exc()
         raise HTTPException(500, f"Drawings processing failed: {e}")
+
+@app.post("/api/room-schedule")
+async def room_schedule_endpoint(
+    file: UploadFile = File(...),
+    only_pages: str = "",   # comma-separated 0-based page indices, e.g. "23,30,24"
+    include_raw: bool = False,
+):
+    """Full flow: read drawings (vision) -> resolve codes + scope rules -> assemble
+    the room finish schedule with ceiling heights. Pass the schedule sheets in
+    only_pages while testing, e.g. 23,30,24."""
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "Please upload a PDF.")
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise HTTPException(500, "Server missing ANTHROPIC_API_KEY.")
+    pdf_bytes = await file.read()
+    pages = None
+    if only_pages.strip():
+        try:
+            pages = [int(x) for x in only_pages.split(",") if x.strip() != ""]
+        except ValueError:
+            raise HTTPException(400, "only_pages must be comma-separated numbers.")
+    try:
+        drawings = analyze_drawings(pdf_bytes, only_pages=pages)
+        assembled = assemble_schedule(drawings)
+        if not include_raw:
+            drawings.pop("raw", None)
+        assembled["extraction_summary"] = drawings.get("summary", {})
+        return JSONResponse(assembled)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(500, f"Schedule assembly failed: {e}")
 
 # Serve the frontend (index.html) at the root
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
