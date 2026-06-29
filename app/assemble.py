@@ -189,6 +189,10 @@ def assemble_schedule(drawings_result):
                 paint_walls.append(rn)
             if "PNT-2" in w["code"]:
                 accent_walls.append(rn)
+        # fallback: model sometimes notes accent (PNT-2) in wall_notes instead of walls
+        if "PNT-2" in (row.get("wall_notes", "") or "").upper() and rn not in accent_walls:
+            accent_walls.append(rn)
+            verify_items.append(f"Room {rn}: accent wall (PNT-2) noted — confirm which wall(s)")
         if row.get("partial_height_walls"):
             partial_height_rooms.append(rn)
             verify_items.append(f"Room {rn}: tile + paint walls — confirm paint height (where tile stops)")
